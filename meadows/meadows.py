@@ -92,8 +92,15 @@ if __name__ == "__main__":
     def lift_status():
         status.update_conditions()
         return jsonify(status.lift_status_dict)
-        
+    
+    @app.route('/is_cascade_open')
+    def is_cascade_open():
+        status.update_conditions()
+        cascade_status = status.lifts['Cascade Express']
+        if cascade_status.status == 'Open':
+            return 'Yes!'
+        return 'No'
 
     print('Starting Flask Server')
-    app.run('0.0.0.0',80)
+    app.run('0.0.0.0',5000)
 
