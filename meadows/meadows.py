@@ -29,6 +29,7 @@ class meadows_status:
     def __init__(self):
         self.conditions_stale = True
         self.conditions_update_time = 0
+        self.conditions_timeout = 5.0
         self.conditions_html = None
         self.snow_12_hr = None
         self.snow_24_hr = None
@@ -40,6 +41,7 @@ class meadows_status:
         self.lift_names = ['Buttercup','Easy Rider','Vista Express','Cascade Express','Daisy','Mt Hood Express','Blue','Stadium Express','Shooting Star Express','Hood River Express','Heather Canyon','Ballroom Carpet'] 
         self.lift_nicknames = ['Buttercup','Easy Rider','Vista','Cascade','Daisy','MHX','Blue','Stadium','Star','Hood River Express','Heather','Ballroom Carpet'] 
         self.lifts = {}
+        self.lift_status_dict = {}
         for i, name in enumerate(self.lift_names):
             self.lifts[name] = lift_status(name, self.lift_nicknames[i])
 
@@ -49,6 +51,7 @@ class meadows_status:
         self.conditions_response_code = response.status_code
         if self.conditions_response_code != 200:
             print('Conditions Page Request Failed')
+            print(response)
             return False
         print('Conditions Update Successful')
         self.conditions_update_time = time.time()
@@ -56,31 +59,49 @@ class meadows_status:
         return True
         
     def parse_conditions_page(self):
-        soup = BeautifulSoup(self.conditions_html, features='html.parser')
-        # Parse Lift Status from the Lift Table
-        lift_table = soup.find('table', { 'class' : 'table-status-chart' })
-        lift_table_body = lift_table.find('tbody')
-        lift_table_rows = lift_table_body.find_all('tr')
-        for row in lift_table_rows:
-            cols = row.find_all('td')
-            lift_name = cols[1].text.strip()
-            lift_status = cols[0].text.strip()
-            lift_hours = cols[2].text.strip()
-            lift_comment = cols[3].text.strip()
-            self.lifts[lift_name].update(lift_status, lift_hours, lift_comment)  
-        # Parse MHX Weather Data
+        try:
+            soup = BeautifulSoup(self.conditions_html, features='html.parser')
+            # Parse Lift Status from the Lift Table
+            lift_table = soup.find('table', { 'class' : 'table-status-chart' })
+            lift_table_body = lift_table.find('tbody')
+            lift_table_rows = lift_table_body.find_all('tr')
+            for row in lift_table_rows:
+                cols = row.find_all('td')
+                lift_name = cols[1].text.strip()
+                lift_status = cols[0].text.strip()
+                lift_hours = cols[2].text.strip()
+                lift_comment = cols[3].text.strip()
+                self.lifts[lift_name].update(lift_status, lift_hours, lift_comment)  
+            # Parse MHX Weather Data Here
+
+            return True
+        except Exception as e:
+            print('Error While Parsing Conditions Page')
+            print(e)
+            return False
 
     def update_conditions(self):
+        if self.check_conditions_current():
+            return True
         if self.get_conditions_page():
             if self.parse_conditions_page():
                 self.conditions_stale = False
+                self.update_lift_status_json()
+                self.conditions_update_time = time.time()
                 return True
         self.conditions_stale = True
-        self.update_lift_status_json()
         return False
     
-    def update_lift_status_json(self):
-        self.lift_status_dict = {} 
+    def check_conditions_current(self):
+        if self.conditions_stale:
+            return False
+        if (time.time() - self.conditions_update_time) > self.conditions_timeout:
+            self.conditions_stale = True
+            return False
+        self.conditions_stale = False
+        return True
+
+    def update_lift_status_json(self): 
         for lift in self.lifts.values():
             self.lift_status_dict[lift.lift_name] = lift.status_dict()
 
@@ -93,6 +114,11 @@ if __name__ == "__main__":
         status.update_conditions()
         return jsonify(status.lift_status_dict)
     
+    @app.route('/cascade_status')
+    def cascade_status():
+        status.update_conditions()
+        return jsonify(status.lifts['Cascade Express'].status_dict())
+
     @app.route('/is_cascade_open')
     def is_cascade_open():
         status.update_conditions()
