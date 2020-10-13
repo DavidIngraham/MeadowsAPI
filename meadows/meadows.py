@@ -130,7 +130,7 @@ if __name__ == "__main__":
     @app.route('/husum_status')
     def husum_status():
         height = get_husum_height()
-        husum_dict = {'height': height}
+        husum_dict = {'height': str(height) + ' ft'}
         if height is None:
             return 'Unavailable'
         if height > 5.0:
