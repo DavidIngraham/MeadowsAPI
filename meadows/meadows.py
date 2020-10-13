@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-
+from husum import get_husum_height
 from flask import Flask, jsonify, request
 import requests, time
 
@@ -126,6 +126,15 @@ if __name__ == "__main__":
         if cascade_status.status == 'Open':
             return 'Yes!'
         return 'No'
+
+    @app.route('/husum_status')
+    def husum_status():
+        height = get_husum_height()
+        if height is None:
+            return 'Unavailable'
+        if height > 5.0:
+            return '5+'
+        return str(height)
 
     print('Starting Flask Server')
     app.run('0.0.0.0',5000)
