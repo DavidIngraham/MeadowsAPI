@@ -130,11 +130,12 @@ if __name__ == "__main__":
     @app.route('/husum_status')
     def husum_status():
         height = get_husum_height()
+        husum_dict = {'height': height}
         if height is None:
             return 'Unavailable'
         if height > 5.0:
             return '5+'
-        return str(height)
+        return jsonify(husum_dict)
 
     print('Starting Flask Server')
     app.run('0.0.0.0',5000)

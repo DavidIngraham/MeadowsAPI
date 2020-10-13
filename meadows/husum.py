@@ -9,7 +9,7 @@ def get_husum_height():
     if underwood_height is not None:
         print(underwood_height)
         husum_height = np.polyval(husum_height_function, underwood_height)
-        return husum_height
+        return round(husum_height, 2)
     return None
 
 
